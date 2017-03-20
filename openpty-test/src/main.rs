@@ -72,7 +72,7 @@ fn inout_spawn(input: libc::c_int, output: libc::c_int) {
                 println!("{:?}", io::Error::last_os_error());
                 break;
             }
-            println!("{}", String::from_utf8(buf[0..len as usize].to_vec()).unwrap());
+            print!("{}", String::from_utf8(buf[0..len as usize].to_vec()).unwrap());
         }
 
     });
