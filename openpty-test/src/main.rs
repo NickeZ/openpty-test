@@ -31,7 +31,7 @@ fn main() {
                     cvt(libc::close(ptm)).unwrap();
                     cvt(libc::close(pts)).unwrap();
                     cvt(libc::setsid()).unwrap();
-                    libc::sleep(2);
+                    //libc::sleep(2);
                 }
                 //thread::sleep(time::Duration::from_millis(10000));
                 printfds("child");
@@ -39,12 +39,13 @@ fn main() {
                 });
 
     let mut child = builder.spawn().unwrap();
-    thread::sleep(time::Duration::from_millis(1000));
+    thread::sleep(time::Duration::from_millis(2000));
 
     cvt(unsafe {libc::close(pts) }).unwrap();
     let ptm2 = cvt(unsafe {libc::dup(ptm) }).unwrap();
 
     printfds("parent");
+    thread::sleep(time::Duration::from_millis(2000));
 
     inout_spawn(ptm, ptm2);
 
