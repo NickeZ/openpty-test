@@ -22,9 +22,10 @@ fn main() {
 
     println!("openpty gave master {:?}, slave {:?}", ptm, pts);
 
-    let mut builder = Command::new("cat");
 
-    builder.stdin(unsafe{Stdio::from_raw_fd(pts)})
+    let mut child = {
+        let mut builder = Command::new("cat");
+        builder.stdin(unsafe{Stdio::from_raw_fd(pts)})
            .stdout(unsafe{Stdio::from_raw_fd(pts)})
            .stderr(unsafe{Stdio::from_raw_fd(pts)})
            .before_exec(move || {
@@ -42,11 +43,12 @@ fn main() {
                 printfds("child");
                 Ok(())
                 });
+        builder.spawn().unwrap()
+    }; //slave is closed here because process::Stdio is dropped.
 
-    let mut child = builder.spawn().unwrap();
     //thread::sleep(time::Duration::from_millis(2000));
 
-    cvt(unsafe {libc::close(pts) }).unwrap();
+    //cvt(unsafe {libc::close(pts) }).unwrap();
     let ptm2 = cvt(unsafe {libc::dup(ptm) }).unwrap();
 
     unsafe {
