@@ -7,6 +7,7 @@ use std::fs;
 use std::ptr;
 use std::thread;
 use std::time;
+use std::io;
 
 fn main() {
 
@@ -53,22 +54,22 @@ fn main() {
     child.wait().unwrap();
 }
 
-const stimuli: [u8; 6] = ['t' as u8, 'e' as u8, 's' as u8, 't' as u8, '\n' as u8, '\x04' as u8];
+const STIM: [u8; 6] = ['t' as u8, 'e' as u8, 's' as u8, 't' as u8, '\n' as u8, '\x04' as u8];
 
 fn inout_spawn(input: libc::c_int, output: libc::c_int) {
     // writer
     let t1 = thread::spawn(move || {
-        cvt(unsafe {libc::write(input, stimuli.as_ptr() as *const libc::c_void, stimuli.len())}).unwrap()
+        cvt(unsafe {libc::write(input, STIM.as_ptr() as *const libc::c_void, STIM.len())}).unwrap()
     });
     // reader
     let t2 = thread::spawn(move || {
-        let mut buf = [0u8; 100];
-        let mut len = 0;
+        let buf = [0u8; 100];
         loop {
-            let len = cvt(unsafe {
+            let len = unsafe {
                 libc::read(output, buf.as_ptr() as *mut libc::c_void, buf.len())
-            }).unwrap();
+            };
             if len == 0 || len == -1 {
+                println!("{:?}", io::Error::last_os_error());
                 break;
             }
             println!("{}", String::from_utf8(buf[0..len as usize].to_vec()).unwrap());
@@ -76,8 +77,8 @@ fn inout_spawn(input: libc::c_int, output: libc::c_int) {
 
     });
 
-    t2.join();
-    t1.join();
+    t2.join().unwrap();
+    t1.join().unwrap();
 }
 
 trait IsMinusOne {
