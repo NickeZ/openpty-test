@@ -29,9 +29,13 @@ fn main() {
            .stderr(unsafe{Stdio::from_raw_fd(pts)})
            .before_exec(move || {
                 unsafe {
-                    cvt(libc::close(ptm)).unwrap();
-                    cvt(libc::close(pts)).unwrap();
+                    // Set session leader
                     cvt(libc::setsid()).unwrap();
+                    // Set controlling terminal
+                    cvt(libc::ioctl(pts, libc::TIOCSCTTY as _, 0)).unwrap();
+                    // Close fds
+                    cvt(libc::close(pts)).unwrap();
+                    cvt(libc::close(ptm)).unwrap();
                     //libc::sleep(2);
                 }
                 //thread::sleep(time::Duration::from_millis(10000));
@@ -40,13 +44,23 @@ fn main() {
                 });
 
     let mut child = builder.spawn().unwrap();
-    thread::sleep(time::Duration::from_millis(2000));
+    //thread::sleep(time::Duration::from_millis(2000));
 
     cvt(unsafe {libc::close(pts) }).unwrap();
     let ptm2 = cvt(unsafe {libc::dup(ptm) }).unwrap();
 
+    unsafe {
+        let flags = libc::fcntl(ptm, libc::F_GETFL, 0);
+        libc::fcntl(ptm, libc::F_SETFL, flags | libc::O_NONBLOCK);
+    }
+
+    unsafe {
+        let flags = libc::fcntl(ptm2, libc::F_GETFL, 0);
+        libc::fcntl(ptm2, libc::F_SETFL, flags | libc::O_NONBLOCK);
+    }
+
     printfds("parent");
-    thread::sleep(time::Duration::from_millis(2000));
+    //thread::sleep(time::Duration::from_millis(2000));
 
     inout_spawn(ptm, ptm2);
 
@@ -69,7 +83,9 @@ fn inout_spawn(input: libc::c_int, output: libc::c_int) {
                 libc::read(output, buf.as_ptr() as *mut libc::c_void, buf.len())
             };
             if len == 0 || len == -1 {
-                println!("{:?}", io::Error::last_os_error());
+                if io::Error::last_os_error().kind() == io::ErrorKind::Other {
+                    println!("Child probably exited");
+                }
                 break;
             }
             print!("{}", String::from_utf8(buf[0..len as usize].to_vec()).unwrap());
